@@ -1,2 +1,210 @@
 # Golang-Chatbot
-A simple Chatbot written in the language Go
+A simple Chatbot written in the language Go 
+
+package main
+
+import (
+	"context"
+	"flag"
+	"fmt"
+	"time"
+	"math/rand"
+	"gopkg.in/resty.v1"
+	"github.com/golang/glog"
+	"github.com/tcolgate/hugot"
+	"github.com/tcolgate/hugot/adapters/shell"
+	"github.com/tcolgate/hugot/bot"
+	"github.com/tcolgate/hugot/handlers/command"
+	"github.com/tcolgate/hugot/handlers/command/ping"
+	
+)
+
+var nick = flag.String("nick", "minion", "Bot nick")
+var questionAnswer int
+
+func bgHandler(ctx context.Context, w hugot.ResponseWriter) {
+	fmt.Fprint(w, "Starting background")
+	<-ctx.Done()
+	fmt.Fprint(w, "Stopping background")
+}
+
+func Trump() *command.Handler {
+    return command.NewFunc(func(root *command.Command)error {
+        root.Use = "trump"
+        root.Short = "this returns dumb things trump has said"
+        root.Run = func(ctx context.Context, w hugot.ResponseWriter, m *hugot.Message, args []string) error {
+            response := struct {
+                Value string
+            } {}    
+           _, err := resty.R().
+                SetHeader("Accept", "application/json").
+                SetResult(&response).
+                Get("https://api.tronalddump.io/random/quote")   
+           if err != nil {
+               fmt.Fprintf(w, "something went wrong")
+               return nil
+           } 
+           fmt.Fprintf(w, "%v", response.Value)
+           return nil  
+        }
+        return nil
+    })
+}
+
+var trumpQuote = func(ctx context.Context, w hugot.ResponseWriter, m *hugot.Message, args[]string)error{
+    response := struct {
+        Value string
+    }{}
+    
+   _, err := resty.R().
+        SetHeader("Accept", "application/json").
+        SetResult(&response).
+        Get("https://api.tronalddump.io/random/quote")
+    if err != nil{
+        fmt.Fprint(w, "something went wrong")
+        return nil
+    }
+    fmt.Fprintf(w, "%v", response.Value)
+    return nil
+}
+
+func Kanye() *command.Handler {
+    return command.NewFunc(func(root *command.Command)error {
+        root.Use = "kanye"
+        root.Short = "this returns dumb things Kanye has said"
+        root.Run = func(ctx context.Context, w hugot.ResponseWriter, m *hugot.Message, args[]string)error{
+            response := struct{
+                Quote string
+            }{}
+           _, err := resty.R().
+                SetHeader("Accept", "application/json").
+                SetResult(&response).
+                Get("https://api.kanye.rest")      
+            if err != nil{
+                fmt.Fprint(w, "something went wrong") 
+                return nil
+            }     
+            fmt.Fprintf(w, "%v", response.Quote)
+            return nil
+        }
+        return nil
+    })
+}
+
+var kanyeQuote = func(ctx context.Context, w hugot.ResponseWriter, m *hugot.Message, args[]string) error {
+    response := struct{
+        Quote string
+    }{}
+    
+   _, err := resty.R().
+        SetHeader("Accept", "application/json").
+        SetResult(&response).
+        Get("https://api.kanye.rest")
+    if err != nil{
+        fmt.Fprint(w, "Something went wrong")
+        return nil
+    }
+    fmt.Fprintf(w, "%v", response.Quote)
+    return nil
+}
+
+func Question() *command.Handler {
+    return command.NewFunc(func(root *command.Command)error{
+        root.Use = "question"
+        root.Short = "this presents a quote and asks the user who they thought said the quote"
+        root.Run = func(ctx context.Context, w hugot.ResponseWriter, m *hugot.Message, args[]string)error{
+            fmt.Println("Who said the below quote press 1 for Trump and 2 for Kanye")
+            myrand := random(1, 3)
+            if myrand == 1 {
+                trumpQuote(ctx, w, m, args)
+                questionAnswer = 1
+            } else {
+                kanyeQuote(ctx, w, m, args)
+                questionAnswer = 2
+            }
+            return nil
+        }
+        return nil
+    })
+}
+
+func Answer() *command.Handler {
+    return command.NewFunc(func(root *command.Command)error{
+        root.Use = "1"
+        root.Short = "if user presses the value of 1"
+        root.Run = func(ctx context.Context, w hugot.ResponseWriter, m *hugot.Message, args[]string)error{
+            if questionAnswer == 1 {
+                fmt.Println("Yes that is correct")
+            } else {
+                fmt.Println("No that is incorrect")
+            }
+            return nil
+        } 
+        return nil
+    })
+}
+
+func Answer2() *command.Handler {
+    return command.NewFunc(func(root *command.Command)error{
+        root.Use = "2"
+        root.Short = "if the user selects option 2"
+        root.Run = func(ctx context.Context, w hugot.ResponseWriter, m *hugot.Message, args[]string)error{
+            if questionAnswer == 2 {
+                fmt.Println("Yes that is correct")
+            } else {
+                fmt.Println("No that is incorrect")
+            }
+            return nil
+        }
+        return nil
+    })
+}
+
+
+func random(min,max int) int {
+    rand.Seed(time.Now().Unix())
+    return rand.Intn(max - min) + min
+}
+
+
+func main() {
+
+	// Parse the command-line flags
+	flag.Parse()
+  
+	// Get Done channel and cancel function
+	ctx, cancel := context.WithCancel(context.Background())
+  
+	// New shell adapter
+	a, err := shell.New(*nick)
+	if err != nil {
+		glog.Fatal(err)
+	}
+	// Register demo handler from hugot package
+	ping.Register()
+  
+	// Register example handlers
+	bot.Command(Trump())
+	bot.Command(Kanye())
+	bot.Command(Question())
+	bot.Command(Answer())
+	bot.Command(Answer2())
+  
+	// Add the background handler to the bot
+	bot.Background(hugot.NewBackgroundHandler("test bg", "testing bg", bgHandler))
+  
+	// ListenAndServe runs the DefaultBot handler loop.
+	go bot.ListenAndServe(ctx, nil, a)
+
+	// Start the interactive chat
+	a.Main()
+
+	// Close the Done channel when called
+	cancel()
+
+	// Done channel
+	<-ctx.Done()
+
+	//delay to check we get the output
+	<-time.After(time.Second * 1)
+}
