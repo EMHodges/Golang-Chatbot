@@ -15,7 +15,6 @@ import (
 	"github.com/tcolgate/hugot/bot"
 	"github.com/tcolgate/hugot/handlers/command"
 	"github.com/tcolgate/hugot/handlers/command/ping"
-    
 )
 
 var nick = flag.String("nick", "minion", "Bot nick")
@@ -27,6 +26,7 @@ func bgHandler(ctx context.Context, w hugot.ResponseWriter) {
 	fmt.Fprint(w, "Stopping background")
 }
 
+// Generates a random quote that Trump has said
 func Trump() *command.Handler {
     return command.NewFunc(func(root *command.Command)error {
         root.Use = "trump"
