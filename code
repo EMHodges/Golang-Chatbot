@@ -30,7 +30,7 @@ func bgHandler(ctx context.Context, w hugot.ResponseWriter) {
 func Trump() *command.Handler {
     return command.NewFunc(func(root *command.Command)error {
         root.Use = "trump"
-        root.Short = "this returns dumb things trump has said"
+        root.Short = "this returns something Trump has said"
         root.Run = func(ctx context.Context, w hugot.ResponseWriter, m *hugot.Message, args []string) error {
             response := struct {
                 Value string
@@ -77,7 +77,7 @@ var trumpQuote = func(ctx context.Context, w hugot.ResponseWriter, m *hugot.Mess
 func Kanye() *command.Handler {
     return command.NewFunc(func(root *command.Command)error {
         root.Use = "kanye"
-        root.Short = "this returns dumb things Kanye has said"
+        root.Short = "this returns soemthing Kanye has said"
         root.Run = func(ctx context.Context, w hugot.ResponseWriter, m *hugot.Message, args[]string)error{
             response := struct{
                 Quote string
